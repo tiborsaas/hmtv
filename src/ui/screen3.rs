@@ -37,7 +37,7 @@ pub fn render(frame: &mut Frame, app: &App) {
     ] = Layout::vertical([
         Constraint::Length(1),
         Constraint::Length(1),
-        Constraint::Length(HMTV_LOGO.len() as u16),
+        Constraint::Length(HMTV_LOGO.len() as u16 + 1),
         Constraint::Length(1),
         Constraint::Length(1),
         Constraint::Length(1),
@@ -156,7 +156,7 @@ pub fn render(frame: &mut Frame, app: &App) {
         );
         frame.render_widget(
             Paragraph::new(Line::from(vec![
-                n.artist.clone().bold().fg(theme.fg()),
+                n.artist.clone().bold(),
                 " — ".fg(theme.dim()),
                 n.title.clone().fg(theme.fg()),
             ]))
