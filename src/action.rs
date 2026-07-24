@@ -10,6 +10,7 @@ pub enum Action {
     VolumeUp,
     VolumeDown,
     Resync,
+    CycleTheme,
     TracksUpdated(Box<NowPlayingUpdate>),
     PlayerStatusChanged(PlayerStatus),
     Error(String),

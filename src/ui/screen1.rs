@@ -5,67 +5,31 @@ use ratatui::text::Line;
 use ratatui::widgets::Paragraph;
 
 use crate::app::App;
-use crate::ui::ascii::{format_mmss, thin_progress_bar};
-use crate::ui::{error_banner, footer_keybinds};
 
-/// Screen 1: Minimal. A single centered "now playing" line, a thin progress
-/// bar, and a one-line footer. No borders, no chrome.
+/// Screen 1: Minimal. Nothing but the title and artist, vertically centered.
+/// No borders, no chrome, no controls hints — as bare as it gets.
 pub fn render(frame: &mut Frame, app: &App) {
+    let theme = app.theme;
     let area = frame.area();
-    let [tag, main, progress, error, footer] = Layout::vertical([
-        Constraint::Length(1),
+    let [_, content, _] = Layout::vertical([
         Constraint::Fill(1),
-        Constraint::Length(1),
-        Constraint::Length(1),
-        Constraint::Length(1),
+        Constraint::Length(2),
+        Constraint::Fill(1),
     ])
     .areas(area);
 
-    frame.render_widget(
-        Paragraph::new("HUMANMUSIC.TV".dim()).alignment(Alignment::Center),
-        tag,
-    );
-
-    let line = if let Some(np) = &app.now_playing {
-        let icon = if app.player_status.paused {
-            "⏸ "
-        } else {
-            "▶ "
-        };
-        Line::from(vec![
-            icon.cyan().bold(),
-            np.data.current_track.artist.clone().bold(),
-            " — ".dim(),
-            np.data.current_track.title.clone().into(),
-        ])
+    let lines = if let Some(np) = &app.now_playing {
+        let t = &np.data.current_track;
+        vec![
+            Line::from(t.title.clone().bold().fg(theme.accent())).alignment(Alignment::Center),
+            Line::from(t.artist.clone().fg(theme.dim())).alignment(Alignment::Center),
+        ]
     } else {
-        Line::from("connecting to HumanMusic.tv…".dim())
+        vec![
+            Line::from("").alignment(Alignment::Center),
+            Line::from("connecting…".fg(theme.dim())).alignment(Alignment::Center),
+        ]
     };
-    frame.render_widget(Paragraph::new(line).alignment(Alignment::Center), main);
 
-    if app.now_playing.is_some() {
-        let width = (progress.width as usize).saturating_sub(20).clamp(10, 60);
-        let bar = thin_progress_bar(width, app.progress_ratio());
-        let label = format!(
-            "{bar} {} / {}",
-            format_mmss(app.elapsed_secs()),
-            format_mmss(app.duration_secs())
-        );
-        frame.render_widget(
-            Paragraph::new(label.dim()).alignment(Alignment::Center),
-            progress,
-        );
-    }
-
-    if let Some(msg) = &app.last_error {
-        frame.render_widget(
-            Paragraph::new(error_banner(msg)).alignment(Alignment::Center),
-            error,
-        );
-    }
-
-    frame.render_widget(
-        Paragraph::new(footer_keybinds()).alignment(Alignment::Center),
-        footer,
-    );
+    frame.render_widget(Paragraph::new(lines), content);
 }

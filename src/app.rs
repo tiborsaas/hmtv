@@ -4,19 +4,23 @@ use std::sync::mpsc::Sender as StdSender;
 use crate::action::Action;
 use crate::api::{NowPlayingUpdate, TrackInfo};
 use crate::player::{PlayerCommand, PlayerStatus};
+use crate::ui::theme::Theme;
 
 const MAX_HISTORY: usize = 8;
 const VISUALIZER_COLUMNS: usize = 48;
 
 pub struct App {
     pub screen: u8,
+    pub theme: Theme,
     pub should_quit: bool,
     pub now_playing: Option<NowPlayingUpdate>,
     pub player_status: PlayerStatus,
     pub history: VecDeque<TrackInfo>,
     pub last_error: Option<String>,
     pub tick_count: u64,
-    /// Decorative, non-audio-reactive visualizer bar heights (0..=8 each).
+    /// Histogram-style visualizer bar heights (0..=8 each). The baseline
+    /// height tracks the current volume level, with per-tick jitter for a
+    /// lively look; it is not derived from real audio spectrum data.
     pub visualizer_levels: Vec<u8>,
     player_cmd_tx: StdSender<PlayerCommand>,
 }
@@ -25,6 +29,7 @@ impl App {
     pub fn new(player_cmd_tx: StdSender<PlayerCommand>) -> Self {
         Self {
             screen: 2,
+            theme: Theme::default(),
             should_quit: false,
             now_playing: None,
             player_status: PlayerStatus::default(),
@@ -65,6 +70,7 @@ impl App {
                         .send(PlayerCommand::Resync { resume_secs });
                 }
             }
+            Action::CycleTheme => self.theme = self.theme.next(),
             Action::TracksUpdated(update) => self.handle_tracks_updated(update),
             Action::PlayerStatusChanged(status) => self.player_status = status,
             Action::Error(msg) => self.last_error = Some(msg),
@@ -94,20 +100,26 @@ impl App {
         self.now_playing = Some(*update);
     }
 
-    /// Decorative random-walk animation for the visualizer bars (screens 3/4).
-    /// Not derived from real audio data.
+    /// Histogram-style visualizer animation (screens 3/4). The baseline bar
+    /// height tracks the current volume (louder = taller), with per-tick
+    /// jitter smoothed toward that baseline for a lively but not-too-jumpy
+    /// look. This is decorative and not derived from real audio data, since
+    /// mpv's IPC does not expose spectrum/FFT data.
     fn step_visualizer(&mut self) {
         use rand::Rng;
         let mut rng = rand::thread_rng();
         let is_paused = self.player_status.paused || self.now_playing.is_none();
+        let baseline = ((self.player_status.volume / 100.0).clamp(0.0, 1.0) * 8.0).round() as i8;
         for level in self.visualizer_levels.iter_mut() {
             if is_paused {
                 *level = level.saturating_sub(1);
                 continue;
             }
-            let delta: i8 = rng.gen_range(-2..=2);
-            let new_val = (*level as i8 + delta).clamp(0, 8);
-            *level = new_val as u8;
+            let jitter: i8 = rng.gen_range(-3..=3);
+            let target = (baseline + jitter).clamp(0, 8);
+            let cur = *level as i8;
+            let next = cur + (target - cur).signum();
+            *level = next.clamp(0, 8) as u8;
         }
     }
 

@@ -10,9 +10,6 @@ pub const HMTV_LOGO: [&str; 5] = [
     "█   █  █   █    █      █  ",
 ];
 
-/// Small antenna/broadcast-tower glyph for decorative headers.
-pub const ANTENNA: [&str; 4] = ["  \\|/  ", " --o-- ", "   |   ", "  /|\\  "];
-
 /// One of 8 Unicode block-height glyphs, `level` in `0..=8` (0 = empty).
 pub fn bar_glyph(level: u8) -> char {
     const GLYPHS: [char; 9] = [' ', '▁', '▂', '▃', '▄', '▅', '▆', '▇', '█'];
@@ -30,18 +27,4 @@ pub fn format_mmss(total_secs: f64) -> String {
     let mins = total_secs / 60;
     let secs = total_secs % 60;
     format!("{mins:02}:{secs:02}")
-}
-
-/// A thin single-line progress indicator, e.g. `▐████████░░░░░▌`.
-pub fn thin_progress_bar(width: usize, ratio: f64) -> String {
-    let ratio = ratio.clamp(0.0, 1.0);
-    let filled = ((width as f64) * ratio).round() as usize;
-    let filled = filled.min(width);
-    let mut s = String::with_capacity(width + 2);
-    s.push('▐');
-    for i in 0..width {
-        s.push(if i < filled { '█' } else { '░' });
-    }
-    s.push('▌');
-    s
 }

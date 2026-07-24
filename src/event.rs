@@ -22,6 +22,7 @@ pub fn handle_event(event: Event) -> Option<Action> {
                 KeyCode::Char('+') | KeyCode::Char('=') => Some(Action::VolumeUp),
                 KeyCode::Char('-') | KeyCode::Char('_') => Some(Action::VolumeDown),
                 KeyCode::Char('r') => Some(Action::Resync),
+                KeyCode::Char('t') => Some(Action::CycleTheme),
                 _ => None,
             }
         }

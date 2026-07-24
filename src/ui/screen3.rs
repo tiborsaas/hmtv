@@ -1,51 +1,68 @@
 use ratatui::Frame;
 use ratatui::layout::{Alignment, Constraint, Layout};
-use ratatui::style::Stylize;
+use ratatui::style::{Style, Stylize};
 use ratatui::text::Line;
-use ratatui::widgets::{Block, BorderType, Borders, Gauge, Paragraph};
+use ratatui::widgets::{Gauge, Paragraph};
 
 use crate::app::App;
 use crate::ui::ascii::{HMTV_LOGO, bars_line, format_mmss};
-use crate::ui::{error_banner, footer_keybinds};
+use crate::ui::{error_banner, header_rule, render_keybind_bar};
 
-/// Screen 3: Rich. Adds the ASCII wordmark banner, a blinking ON AIR
-/// indicator and an animated (decorative, non-audio-reactive) visualizer.
+/// Screen 3: Rich. The ASCII wordmark banner, a blinking ON AIR indicator and
+/// a volume-driven dynamic histogram sit above the transport controls.
 pub fn render(frame: &mut Frame, app: &App) {
-    let outer = Block::default()
-        .title(" HUMANMUSIC.TV · Rich ".bold().magenta())
-        .title_alignment(Alignment::Center)
-        .borders(Borders::ALL)
-        .border_type(BorderType::Double)
-        .border_style(ratatui::style::Style::new().magenta());
-    let inner = outer.inner(frame.area());
-    frame.render_widget(outer, frame.area());
+    let theme = app.theme;
+    let area = frame.area();
 
     let [
+        header,
+        spacer1,
         logo,
         on_air,
+        spacer2,
         now_playing,
+        artist_line,
+        spacer3,
         visualizer,
+        spacer4,
         progress,
+        spacer5,
         volume,
-        next_up,
+        spacer6,
+        next_label,
+        next_line,
+        filler,
         error,
-        footer,
+        keybinds,
     ] = Layout::vertical([
+        Constraint::Length(1),
+        Constraint::Length(1),
         Constraint::Length(HMTV_LOGO.len() as u16),
         Constraint::Length(1),
-        Constraint::Length(2),
         Constraint::Length(1),
         Constraint::Length(1),
         Constraint::Length(1),
-        Constraint::Length(2),
         Constraint::Length(1),
         Constraint::Length(1),
+        Constraint::Length(1),
+        Constraint::Length(1),
+        Constraint::Length(1),
+        Constraint::Length(1),
+        Constraint::Length(1),
+        Constraint::Length(1),
+        Constraint::Length(1),
+        Constraint::Fill(1),
+        Constraint::Length(1),
+        Constraint::Length(4),
     ])
-    .areas(inner);
+    .areas(area);
+    let _ = (spacer1, spacer2, spacer3, spacer4, spacer5, spacer6, filler);
+
+    frame.render_widget(header_rule(theme, "HUMANMUSIC.TV · RICH"), header);
 
     let logo_lines: Vec<Line> = HMTV_LOGO
         .iter()
-        .map(|l| Line::from((*l).cyan().bold()))
+        .map(|l| Line::from((*l).fg(theme.accent()).bold()))
         .collect();
     frame.render_widget(
         Paragraph::new(logo_lines).alignment(Alignment::Center),
@@ -55,11 +72,11 @@ pub fn render(frame: &mut Frame, app: &App) {
     let is_paused = app.player_status.paused || app.now_playing.is_none();
     let blink_on = (app.tick_count / 5).is_multiple_of(2);
     let indicator = if is_paused {
-        " ⏸ PAUSED ".black().on_yellow().bold()
+        " ⏸ PAUSED ".fg(theme.dim())
     } else if blink_on {
-        " ● ON AIR ".black().on_green().bold()
+        " ● ON AIR ".bold().fg(theme.accent())
     } else {
-        " ● ON AIR ".dim()
+        " ● ON AIR ".fg(theme.dim())
     };
     frame.render_widget(
         Paragraph::new(Line::from(indicator)).alignment(Alignment::Center),
@@ -68,25 +85,29 @@ pub fn render(frame: &mut Frame, app: &App) {
 
     if let Some(np) = &app.now_playing {
         let t = &np.data.current_track;
-        let lines = vec![
-            Line::from(t.title.clone().bold()).alignment(Alignment::Center),
-            Line::from(vec![
-                t.artist.clone().magenta(),
-                format!(" · {}", t.year).dim(),
-            ])
+        frame.render_widget(
+            Paragraph::new(t.title.clone().bold().fg(theme.fg())).alignment(Alignment::Center),
+            now_playing,
+        );
+        frame.render_widget(
+            Paragraph::new(Line::from(vec![
+                t.artist.clone().fg(theme.accent()),
+                format!(" · {}", t.year).fg(theme.dim()),
+            ]))
             .alignment(Alignment::Center),
-        ];
-        frame.render_widget(Paragraph::new(lines), now_playing);
+            artist_line,
+        );
     } else {
         frame.render_widget(
-            Paragraph::new("connecting to HumanMusic.tv…".dim()).alignment(Alignment::Center),
+            Paragraph::new("connecting to HumanMusic.tv…".fg(theme.dim()))
+                .alignment(Alignment::Center),
             now_playing,
         );
     }
 
     let bars = bars_line(&app.visualizer_levels);
     frame.render_widget(
-        Paragraph::new(bars.cyan()).alignment(Alignment::Center),
+        Paragraph::new(bars.fg(theme.accent())).alignment(Alignment::Center),
         visualizer,
     );
 
@@ -98,7 +119,7 @@ pub fn render(frame: &mut Frame, app: &App) {
             format_mmss(app.duration_secs())
         );
         let gauge = Gauge::default()
-            .gauge_style(ratatui::style::Style::new().magenta().on_dark_gray())
+            .gauge_style(Style::new().fg(theme.accent()).bg(theme.dim()))
             .ratio(ratio)
             .label(label);
         frame.render_widget(gauge, progress);
@@ -106,23 +127,26 @@ pub fn render(frame: &mut Frame, app: &App) {
 
     let vol_ratio = (app.player_status.volume / 100.0).clamp(0.0, 1.0);
     let vol_gauge = Gauge::default()
-        .gauge_style(ratatui::style::Style::new().cyan())
+        .gauge_style(Style::new().fg(theme.dim()))
         .ratio(vol_ratio)
         .label(format!("vol {:.0}%", app.player_status.volume));
     frame.render_widget(vol_gauge, volume);
 
     if let Some(np) = &app.now_playing {
         let n = &np.data.next_track;
-        let lines = vec![
-            Line::from("next up".dim()).alignment(Alignment::Center),
-            Line::from(vec![
+        frame.render_widget(
+            Paragraph::new("next up".fg(theme.dim())).alignment(Alignment::Center),
+            next_label,
+        );
+        frame.render_widget(
+            Paragraph::new(Line::from(vec![
                 n.artist.clone().bold(),
-                " — ".dim(),
-                n.title.clone().into(),
-            ])
+                " — ".fg(theme.dim()),
+                n.title.clone().fg(theme.fg()),
+            ]))
             .alignment(Alignment::Center),
-        ];
-        frame.render_widget(Paragraph::new(lines), next_up);
+            next_line,
+        );
     }
 
     if let Some(msg) = &app.last_error {
@@ -132,8 +156,5 @@ pub fn render(frame: &mut Frame, app: &App) {
         );
     }
 
-    frame.render_widget(
-        Paragraph::new(footer_keybinds()).alignment(Alignment::Center),
-        footer,
-    );
+    render_keybind_bar(frame, keybinds, theme);
 }
