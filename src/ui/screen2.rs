@@ -123,7 +123,7 @@ fn render_info_panel(frame: &mut Frame, app: &App, area: Rect) {
     frame.render_widget(block, area);
 
     let text = vec![
-        Line::from("HumanMusic.tv".bold().fg(theme.accent())),
+        Line::from("HUMAN MUSIC TV".bold().fg(theme.accent())),
         Line::from(""),
         Line::from("A 24/7 curated stream of high-vibe music".fg(theme.fg())),
         Line::from("built for a better internet.".fg(theme.fg())),
