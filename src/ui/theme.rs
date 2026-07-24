@@ -46,6 +46,10 @@ impl Theme {
         }
     }
 
+    pub fn dark(self) -> Color {
+        Color::Rgb(10, 10, 10)
+    }
+
     /// Bright accent color: headings, highlights, active bars.
     pub fn accent(self) -> Color {
         match self {

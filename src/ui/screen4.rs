@@ -58,7 +58,7 @@ fn render_center_panel(buf: &mut Buffer, area: Rect, app: &App, theme: Theme) {
                 .max()
                 .unwrap_or(0),
         );
-    let content_height = 1 + 1 + year_lines.len() + 1;
+    let content_height = 1 + 1 + year_lines.len() + 1 + 1;
     let panel_width = (content_width as u16)
         .saturating_add(pad * 2)
         .min(area.width);
@@ -74,7 +74,7 @@ fn render_center_panel(buf: &mut Buffer, area: Rect, app: &App, theme: Theme) {
         height: panel_height,
     };
 
-    let bg = Style::new().bg(theme.dim());
+    let bg = Style::new().bg(theme.accent());
     for y in panel.top()..panel.bottom() {
         for x in panel.left()..panel.right() {
             buf.set_string(x, y, " ", bg);
@@ -88,9 +88,9 @@ fn render_center_panel(buf: &mut Buffer, area: Rect, app: &App, theme: Theme) {
         height: panel.height.saturating_sub(pad * 2),
     };
 
-    let title_style = Style::new().fg(theme.accent()).bg(theme.dim());
-    let artist_style = Style::new().fg(theme.fg()).bg(theme.dim());
-    let year_style = Style::new().fg(theme.accent()).bg(theme.dim());
+    let title_style = Style::new().fg(theme.dark()).bg(theme.accent());
+    let artist_style = Style::new().fg(theme.dark()).bg(theme.accent());
+    let year_style = Style::new().fg(theme.dark()).bg(theme.accent());
 
     draw_centered_line(buf, inner, 0, &title_text, title_style);
     draw_centered_line(buf, inner, 1, &artist_text, artist_style);
@@ -104,7 +104,7 @@ fn render_center_panel(buf: &mut Buffer, area: Rect, app: &App, theme: Theme) {
         }
     }
 
-    let message_y = inner.y + 2 + year_lines.len() as u16;
+    let message_y = inner.y + 2 + year_lines.len() as u16 + 1;
     if message_y < inner.bottom() {
         draw_centered_line(buf, inner, message_y - inner.y, &message_text, artist_style);
     }
@@ -168,7 +168,7 @@ fn next_message(app: &App, _theme: Theme) -> String {
         if remaining <= 30.0 && !np.data.next_track.title.is_empty() {
             format!("Next: {}", np.data.next_track.title)
         } else {
-            format!("in {}", format_mmss(remaining.max(0.0)))
+            format!("--- {} ---", format_mmss(remaining.max(0.0)))
         }
     } else {
         "waiting for stream…".to_string()
