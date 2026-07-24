@@ -25,6 +25,7 @@ pub struct App {
     pub visualizer_levels: Vec<u8>,
     pub fallback_pool: Vec<String>,
     pub is_playing_fallback: bool,
+    pub fallback_warning: Option<String>,
     player_cmd_tx: StdSender<PlayerCommand>,
 }
 
@@ -42,6 +43,7 @@ impl App {
             visualizer_levels: vec![1; VISUALIZER_COLUMNS],
             fallback_pool: Vec::new(),
             is_playing_fallback: false,
+            fallback_warning: None,
             player_cmd_tx,
         }
     }
@@ -76,6 +78,7 @@ impl App {
                             resume_secs,
                         });
                         self.is_playing_fallback = false;
+                        self.fallback_warning = None;
                     } else {
                         let _ = self
                             .player_cmd_tx
@@ -95,8 +98,10 @@ impl App {
             Action::TracksUpdated(update) => self.handle_tracks_updated(update),
             Action::PlayerStatusChanged(status) => {
                 // If there's an error, try playing a fallback video.
-                if status.error.is_some() && self.player_status.error != status.error {
-                    self.play_next_fallback();
+                if let Some(err) = status.error.as_deref() {
+                    if self.player_status.error != status.error {
+                        self.play_next_fallback(err);
+                    }
                 }
 
                 // Only update last_error from player status if it's an error.
@@ -141,12 +146,13 @@ impl App {
                 resume_secs,
             });
             self.is_playing_fallback = false;
+            self.fallback_warning = None;
         }
 
         self.now_playing = Some(*update);
     }
 
-    fn play_next_fallback(&mut self) {
+    fn play_next_fallback(&mut self, source_error: &str) {
         use rand::seq::SliceRandom;
         if self.fallback_pool.is_empty() {
             let mut new_pool: Vec<String> = FALLBACK_VIDEOS.iter().map(|s| s.to_string()).collect();
@@ -160,6 +166,9 @@ impl App {
                 resume_secs: 0.0,
             });
             self.is_playing_fallback = true;
+            self.fallback_warning = Some(format!(
+                "Track unavailable ({source_error}). Playing a backup track until the next switch."
+            ));
         }
     }
 

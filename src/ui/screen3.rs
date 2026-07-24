@@ -8,8 +8,8 @@ use crate::app::App;
 use crate::ui::ascii::{HMTV_LOGO, bars_line, format_mmss};
 use crate::ui::{error_banner, header_rule, render_keybind_bar};
 
-/// Screen 3: Rich. The ASCII wordmark banner, a blinking ON AIR indicator and
-/// a volume-driven dynamic histogram sit above the transport controls.
+/// Screen 3: Rich. The ASCII wordmark banner, a live status indicator and a
+/// volume-driven dynamic histogram sit above the transport controls.
 pub fn render(frame: &mut Frame, app: &App) {
     let theme = app.theme;
     let area = frame.area();
@@ -72,7 +72,12 @@ pub fn render(frame: &mut Frame, app: &App) {
     let is_paused = app.player_status.paused || app.now_playing.is_none();
     let blink_on = (app.tick_count / 5).is_multiple_of(2);
 
-    let indicator = if app.last_error.is_some() {
+    let indicator = if app.is_playing_fallback {
+        " MISSING TRACK - BREAK "
+            .bold()
+            .fg(theme.dark())
+            .bg(theme.accent())
+    } else if app.last_error.is_some() {
         " PLAYBACK ERROR ".bold().fg(theme.accent())
     } else if is_paused {
         " ⏸ PAUSED ".fg(theme.dim())
@@ -86,7 +91,23 @@ pub fn render(frame: &mut Frame, app: &App) {
         on_air,
     );
 
-    if let Some(err) = &app.last_error {
+    if app.is_playing_fallback {
+        let msg = app
+            .fallback_warning
+            .as_deref()
+            .unwrap_or("Track unavailable. Playing a backup track until the next switch.");
+        frame.render_widget(
+            Paragraph::new(msg.to_string().bold().fg(theme.accent()))
+                .alignment(Alignment::Center)
+                .wrap(Wrap { trim: true }),
+            now_playing,
+        );
+        frame.render_widget(
+            Paragraph::new("Press R to retry the scheduled track.".fg(theme.dim()))
+                .alignment(Alignment::Center),
+            artist_line,
+        );
+    } else if let Some(err) = &app.last_error {
         frame.render_widget(
             Paragraph::new(err.clone().fg(theme.accent()))
                 .alignment(Alignment::Center)
@@ -167,7 +188,23 @@ pub fn render(frame: &mut Frame, app: &App) {
         );
     }
 
-    if let Some(msg) = &app.last_error {
+    if app.is_playing_fallback {
+        let msg = app
+            .fallback_warning
+            .as_deref()
+            .unwrap_or("Track unavailable. Playing a backup track.");
+        frame.render_widget(
+            Paragraph::new(Line::from(vec![
+                " MISSING TRACK - BREAK "
+                    .bold()
+                    .fg(theme.dark())
+                    .bg(theme.accent()),
+                format!(" {msg}").fg(theme.accent()),
+            ]))
+            .alignment(Alignment::Center),
+            error,
+        );
+    } else if let Some(msg) = &app.last_error {
         frame.render_widget(
             Paragraph::new(error_banner(theme, msg)).alignment(Alignment::Center),
             error,
