@@ -46,6 +46,17 @@ From the project root:
 cargo run
 ```
 
+Install the `hmtv` command to your Cargo bin directory (cross-platform):
+
+```bash
+cargo install --path . --force
+```
+
+After install, make sure Cargo's bin directory is on your `PATH`:
+
+- macOS/Linux: `~/.cargo/bin`
+- Windows: `%USERPROFILE%\\.cargo\\bin`
+
 Release build:
 
 ```bash
