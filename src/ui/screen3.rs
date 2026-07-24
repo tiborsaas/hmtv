@@ -156,7 +156,7 @@ pub fn render(frame: &mut Frame, app: &App) {
         );
         frame.render_widget(
             Paragraph::new(Line::from(vec![
-                n.artist.clone().bold(),
+                n.artist.clone().fg(theme.accent()).bold(),
                 " — ".fg(theme.dim()),
                 n.title.clone().fg(theme.fg()),
             ]))
