@@ -8,6 +8,7 @@ use crate::ui::theme::Theme;
 
 const MAX_HISTORY: usize = 8;
 const VISUALIZER_COLUMNS: usize = 48;
+const FALLBACK_VIDEOS: &[&str] = &["M91VPs47jZc", "3gCxSWYWqug", "w2EPWCrXI3M"];
 
 pub struct App {
     pub screen: u8,
@@ -22,6 +23,8 @@ pub struct App {
     /// height tracks the current volume level, with per-tick jitter for a
     /// lively look; it is not derived from real audio spectrum data.
     pub visualizer_levels: Vec<u8>,
+    pub fallback_pool: Vec<String>,
+    pub is_playing_fallback: bool,
     player_cmd_tx: StdSender<PlayerCommand>,
 }
 
@@ -37,6 +40,8 @@ impl App {
             last_error: None,
             tick_count: 0,
             visualizer_levels: vec![1; VISUALIZER_COLUMNS],
+            fallback_pool: Vec::new(),
+            is_playing_fallback: false,
             player_cmd_tx,
         }
     }
@@ -65,9 +70,17 @@ impl App {
             Action::Resync => {
                 if let Some(np) = &self.now_playing {
                     let resume_secs = np.estimated_elapsed_secs();
-                    let _ = self
-                        .player_cmd_tx
-                        .send(PlayerCommand::Resync { resume_secs });
+                    if self.is_playing_fallback {
+                        let _ = self.player_cmd_tx.send(PlayerCommand::Load {
+                            ytid: np.data.current_track.ytid.clone(),
+                            resume_secs,
+                        });
+                        self.is_playing_fallback = false;
+                    } else {
+                        let _ = self
+                            .player_cmd_tx
+                            .send(PlayerCommand::Resync { resume_secs });
+                    }
                 }
             }
             Action::OpenVideo => {
@@ -81,6 +94,11 @@ impl App {
             Action::CycleTheme => self.theme = self.theme.next(),
             Action::TracksUpdated(update) => self.handle_tracks_updated(update),
             Action::PlayerStatusChanged(status) => {
+                // If there's an error, try playing a fallback video.
+                if status.error.is_some() && self.player_status.error != status.error {
+                    self.play_next_fallback();
+                }
+
                 // Only update last_error from player status if it's an error.
                 // We avoid clearing errors from other sources (like API poller) here.
                 if status.error.is_some() {
@@ -99,6 +117,13 @@ impl App {
     }
 
     fn handle_tracks_updated(&mut self, update: Box<NowPlayingUpdate>) {
+        // Clear API-related errors: if we're here, the fetch just succeeded.
+        if let Some(err) = &self.last_error {
+            if err.contains("HumanMusic.tv API") {
+                self.last_error = None;
+            }
+        }
+
         let is_new_track = self
             .now_playing
             .as_ref()
@@ -115,9 +140,27 @@ impl App {
                 ytid: update.data.current_track.ytid.clone(),
                 resume_secs,
             });
+            self.is_playing_fallback = false;
         }
 
         self.now_playing = Some(*update);
+    }
+
+    fn play_next_fallback(&mut self) {
+        use rand::seq::SliceRandom;
+        if self.fallback_pool.is_empty() {
+            let mut new_pool: Vec<String> = FALLBACK_VIDEOS.iter().map(|s| s.to_string()).collect();
+            new_pool.shuffle(&mut rand::thread_rng());
+            self.fallback_pool = new_pool;
+        }
+
+        if let Some(ytid) = self.fallback_pool.pop() {
+            let _ = self.player_cmd_tx.send(PlayerCommand::Load {
+                ytid,
+                resume_secs: 0.0,
+            });
+            self.is_playing_fallback = true;
+        }
     }
 
     /// Histogram-style visualizer animation (screens 3/4). The baseline bar
