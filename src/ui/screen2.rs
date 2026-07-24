@@ -54,8 +54,9 @@ fn render_controls_panel(frame: &mut Frame, app: &App, area: Rect) {
     };
     frame.render_widget(block, area);
 
-    let [title_line, artist_line, progress_line, vol_line] = Layout::vertical([
+    let [title_line, artist_line, progress_line, _, vol_line] = Layout::vertical([
         Constraint::Length(1),
+        Constraint::Length(2),
         Constraint::Length(1),
         Constraint::Length(1),
         Constraint::Length(1),
@@ -89,7 +90,7 @@ fn render_controls_panel(frame: &mut Frame, app: &App, area: Rect) {
             .gauge_style(Style::new().fg(theme.accent()).bg(theme.dim()))
             .ratio(ratio)
             .label(label);
-        frame.render_widget(gauge, progress_line);
+        frame.render_widget(gauge, progress_line, );
     } else {
         frame.render_widget(Paragraph::new("Connecting...".fg(theme.dim())), title_line);
     }
@@ -124,8 +125,8 @@ fn render_info_panel(frame: &mut Frame, app: &App, area: Rect) {
     let text = vec![
         Line::from("HumanMusic.tv".bold().fg(theme.accent())),
         Line::from(""),
-        Line::from("A 24/7 curated stream of high-vibe music"),
-        Line::from("built for a better internet."),
+        Line::from("A 24/7 curated stream of high-vibe music".fg(theme.fg())),
+        Line::from("built for a better internet.".fg(theme.fg())),
         Line::from(""),
         Line::from(vec![
             "Website: ".fg(theme.dim()),

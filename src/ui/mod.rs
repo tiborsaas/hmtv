@@ -78,9 +78,9 @@ pub fn render_keybind_bar(frame: &mut Frame, area: Rect, theme: Theme) {
 
 /// Renders the `Action::Error` banner, if any, as a single dismissible-looking
 /// line. Screens call this last so it overlays near the bottom.
-pub fn error_banner(msg: &str) -> Line<'static> {
+pub fn error_banner(theme: Theme, msg: &str) -> Line<'static> {
     Line::from(vec![
-        " ERROR ".black().on_red().bold(),
-        format!(" {msg}").red(),
+        " ERROR ".bold().fg(theme.accent()),
+        format!(" {msg}").fg(theme.dim()),
     ])
 }

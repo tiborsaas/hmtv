@@ -73,7 +73,7 @@ pub fn render(frame: &mut Frame, app: &App) {
     let blink_on = (app.tick_count / 5).is_multiple_of(2);
 
     let indicator = if app.last_error.is_some() {
-        " PLAYBACK ERROR ".bold().on_red().white()
+        " PLAYBACK ERROR ".bold().fg(theme.accent())
     } else if is_paused {
         " ⏸ PAUSED ".fg(theme.dim())
     } else if blink_on {
@@ -156,7 +156,7 @@ pub fn render(frame: &mut Frame, app: &App) {
         );
         frame.render_widget(
             Paragraph::new(Line::from(vec![
-                n.artist.clone().bold(),
+                n.artist.clone().bold().fg(theme.fg()),
                 " — ".fg(theme.dim()),
                 n.title.clone().fg(theme.fg()),
             ]))
@@ -167,7 +167,7 @@ pub fn render(frame: &mut Frame, app: &App) {
 
     if let Some(msg) = &app.last_error {
         frame.render_widget(
-            Paragraph::new(error_banner(msg)).alignment(Alignment::Center),
+            Paragraph::new(error_banner(theme, msg)).alignment(Alignment::Center),
             error,
         );
     }

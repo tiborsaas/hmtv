@@ -14,18 +14,16 @@ pub enum Theme {
     Red,
     Blue1,
     Blue2,
-    Teal,
 }
 
 impl Theme {
-    pub const ALL: [Theme; 7] = [
+    pub const ALL: [Theme; 6] = [
         Theme::Monochrome,
         Theme::Green,
         Theme::Amber,
         Theme::Red,
         Theme::Blue1,
         Theme::Blue2,
-        Theme::Teal,
     ];
 
     /// Cycles to the next theme in `ALL`, wrapping around.
@@ -42,7 +40,6 @@ impl Theme {
             Theme::Red => "RED",
             Theme::Blue1 => "BLUE I",
             Theme::Blue2 => "BLUE II",
-            Theme::Teal => "TEAL",
         }
     }
 
@@ -59,7 +56,6 @@ impl Theme {
             Theme::Red => Color::Rgb(255, 100, 100),
             Theme::Blue1 => Color::Rgb(90, 180, 255),
             Theme::Blue2 => Color::Rgb(140, 130, 255),
-            Theme::Teal => Color::Rgb(70, 220, 200),
         }
     }
 
@@ -72,7 +68,6 @@ impl Theme {
             Theme::Red => Color::Rgb(140, 55, 55),
             Theme::Blue1 => Color::Rgb(50, 90, 140),
             Theme::Blue2 => Color::Rgb(70, 65, 140),
-            Theme::Teal => Color::Rgb(35, 110, 100),
         }
     }
 
