@@ -32,6 +32,7 @@ pub const KEYBINDS: &[(&str, &str)] = &[
     ("+/-", "VOLUME"),
     ("R", "RESYNC"),
     ("T", "THEME"),
+    ("O", "OPEN VIDEO"),
     ("Q", "QUIT"),
 ];
 
