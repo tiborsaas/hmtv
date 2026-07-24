@@ -1,4 +1,5 @@
-use std::io::Write as _;
+use std::io::{BufRead, BufReader, Write as _};
+use std::os::unix::net::UnixStream;
 use std::process::{Child, Command, Stdio};
 use std::sync::mpsc::Receiver;
 use std::time::{Duration, Instant};
@@ -85,7 +86,7 @@ fn run_player(
         .arg("--volume=80")
         .stdin(Stdio::null())
         .stdout(Stdio::null())
-        .stderr(Stdio::null())
+        .stderr(Stdio::null()) // TODO: maybe log to a file instead of null
         .spawn()
         .map_err(|e| format!("failed to spawn mpv: {e}"))?;
 
@@ -105,6 +106,16 @@ fn run_player(
     let mpv = Mpv::connect(socket.to_str().ok_or("socket path is not valid UTF-8")?)
         .map_err(|e| format!("mpv IPC connect failed: {e:?}"))?;
 
+    // Create a shadow connection just for listening to events.
+    // This avoids mpvipc's behavior of swallowing events during synchronous commands.
+    let event_stream =
+        UnixStream::connect(&socket).map_err(|e| format!("event socket failed: {e}"))?;
+    event_stream
+        .set_nonblocking(true)
+        .map_err(|e| format!("failed to set nonblocking: {e}"))?;
+    let mut event_reader = BufReader::new(event_stream.try_clone().map_err(|e| format!("stream clone failed: {e}"))?);
+    let mut event_buf = String::new();
+
     let mut status = PlayerStatus {
         connected: true,
         ..Default::default()
@@ -112,6 +123,29 @@ fn run_player(
     let _ = status_tx.send(status.clone());
 
     loop {
+        // Drain events from the shadow connection.
+        loop {
+            event_buf.clear();
+            match event_reader.read_line(&mut event_buf) {
+                Ok(0) => break, // Socket closed
+                Ok(_) => {
+                    if let Ok(val) = serde_json::from_str::<serde_json::Value>(&event_buf) {
+                        if val["event"] == "end-file" && val["reason"] == "error" {
+                            let err_msg = val["file_error"]
+                                .as_str()
+                                .or(val["error"].as_str())
+                                .unwrap_or("stream failed");
+                            status.error = Some(format!("MPV Error: {err_msg}"));
+                        } else if val["event"] == "file-loaded" {
+                            status.error = None;
+                        }
+                    }
+                }
+                Err(e) if e.kind() == std::io::ErrorKind::WouldBlock => break,
+                Err(_) => break,
+            }
+        }
+
         // Drain any pending commands without blocking.
         while let Ok(cmd) = cmd_rx.try_recv() {
             match cmd {
@@ -169,6 +203,7 @@ fn run_player(
         if let Ok(vol) = mpv.get_property::<f64>("volume") {
             status.volume = vol;
         }
+
         let _ = status_tx.send(status.clone());
 
         std::thread::sleep(Duration::from_millis(200));
