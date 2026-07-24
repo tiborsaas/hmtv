@@ -28,7 +28,7 @@ pub struct App {
 impl App {
     pub fn new(player_cmd_tx: StdSender<PlayerCommand>) -> Self {
         Self {
-            screen: 2,
+            screen: 3,
             theme: Theme::default(),
             should_quit: false,
             now_playing: None,
@@ -70,9 +70,29 @@ impl App {
                         .send(PlayerCommand::Resync { resume_secs });
                 }
             }
+            Action::OpenVideo => {
+                if let Some(np) = &self.now_playing {
+                    let url = format!("https://www.youtube.com/watch?v={}", np.data.current_track.ytid);
+                    let _ = std::process::Command::new("open")
+                        .arg(url)
+                        .spawn();
+                }
+            }
             Action::CycleTheme => self.theme = self.theme.next(),
             Action::TracksUpdated(update) => self.handle_tracks_updated(update),
-            Action::PlayerStatusChanged(status) => self.player_status = status,
+            Action::PlayerStatusChanged(status) => {
+                // Only update last_error from player status if it's an error.
+                // We avoid clearing errors from other sources (like API poller) here.
+                if status.error.is_some() {
+                    self.last_error = status.error.clone();
+                } else if let Some(err) = &self.last_error {
+                    // Heuristic: clear it only if it looks like a player error we previously set.
+                    if err.contains("stopped unexpectedly") || err.contains("load failed") || err.contains("MPV") {
+                        self.last_error = None;
+                    }
+                }
+                self.player_status = status;
+            }
             Action::Error(msg) => self.last_error = Some(msg),
             Action::ClearError => self.last_error = None,
         }
