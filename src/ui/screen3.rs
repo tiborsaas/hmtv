@@ -128,11 +128,13 @@ pub fn render(frame: &mut Frame, app: &App) {
             format_mmss(app.elapsed_secs()),
             format_mmss(app.duration_secs())
         );
+        let [_, gauge_area, _] = Layout::horizontal([Constraint::Fill(1), Constraint::Percentage(75), Constraint::Fill(1)])
+            .areas(progress);
         let gauge = Gauge::default()
             .gauge_style(Style::new().fg(theme.accent()).bg(theme.dim()))
             .ratio(ratio)
             .label(label);
-        frame.render_widget(gauge, progress);
+        frame.render_widget(gauge, gauge_area);
     }
 
     let vol_val = app.player_status.volume.round() as usize;
