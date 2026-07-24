@@ -2,14 +2,15 @@
 
 Terminal radio player for HumanMusic.tv, built with Rust, ratatui, and mpv.
 
-It polls the HumanMusic.tv API, plays YouTube audio through mpv (audio-only), and renders four switchable terminal screens from minimalist to fully styled ASCII/visualizer mode.
+It polls the HumanMusic.tv API, plays YouTube audio through mpv (audio-only), and renders four switchable terminal screens from a bare-minimum title/artist line up to a demoscene-style generative art screen.
 
 ## Features
 
 - Live track data from HumanMusic.tv API
 - Audio playback via mpv JSON IPC backend
-- Four TUI screens (keys 1-4)
-- Decorative animated visualizer bars
+- Four TUI screens (keys 1-4), from a bare title/artist line to a demoscene-style generative art screen
+- 7 monochrome-leaning color themes, cycled with `t` (Monochrome, Green, Amber, Red, Blue I, Blue II, Teal)
+- Volume-driven dynamic histogram visualizer bars
 - Play/pause, volume control, manual resync
 - Graceful startup checks for required binaries
 
@@ -87,15 +88,20 @@ cargo test
 - - or =: Volume up
 - - or \_: Volume down
 - r: Resync playback to API timeline
+- t: Cycle color theme
 - Esc: Clear visible error banner
 - q: Quit
 
 ## Screens
 
-1. Minimal: centered now-playing line + slim progress
-2. Standard: bordered layout with progress + volume gauges
-3. Rich: ASCII logo, blinking on-air badge, animated bars
-4. Full: rich view + history panel + mirrored bars + marquee + countdown
+1. Minimal: just the title and artist, centered, no chrome
+2. Standard: themed header rule, progress + volume gauges, next-up preview, boxed keybind footer
+3. Rich: ASCII logo, blinking on-air badge, volume-driven histogram bars
+4. Full: demoscene-style layout — procedural generative art panels (breathing disc over barcode stripes, converging concentric-square tunnel), a volume VU rail, mirrored histogram bars, marquee, and countdown to the next track
+
+## Themes
+
+Press `t` to cycle through 7 color themes: Monochrome, Green, Amber, Red, Blue I, Blue II, Teal. Each theme drives an accent color, a dim/chrome color, and body text color used consistently across all four screens; the active theme name is shown in the footer's `T` key box.
 
 ## Data Source
 
