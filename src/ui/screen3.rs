@@ -2,7 +2,7 @@ use ratatui::Frame;
 use ratatui::layout::{Alignment, Constraint, Layout};
 use ratatui::style::{Style, Stylize};
 use ratatui::text::Line;
-use ratatui::widgets::{Gauge, Paragraph};
+use ratatui::widgets::{Gauge, Paragraph, Wrap};
 
 use crate::app::App;
 use crate::ui::ascii::{HMTV_LOGO, bars_line, format_mmss};
@@ -71,7 +71,10 @@ pub fn render(frame: &mut Frame, app: &App) {
 
     let is_paused = app.player_status.paused || app.now_playing.is_none();
     let blink_on = (app.tick_count / 5).is_multiple_of(2);
-    let indicator = if is_paused {
+
+    let indicator = if app.last_error.is_some() {
+        " PLAYBACK ERROR ".bold().on_red().white()
+    } else if is_paused {
         " ⏸ PAUSED ".fg(theme.dim())
     } else if blink_on {
         " ● ON AIR ".bold().fg(theme.accent())
@@ -83,7 +86,14 @@ pub fn render(frame: &mut Frame, app: &App) {
         on_air,
     );
 
-    if let Some(np) = &app.now_playing {
+    if let Some(err) = &app.last_error {
+        frame.render_widget(
+            Paragraph::new(err.clone().fg(theme.accent()))
+                .alignment(Alignment::Center)
+                .wrap(Wrap { trim: true }),
+            now_playing,
+        );
+    } else if let Some(np) = &app.now_playing {
         let t = &np.data.current_track;
         frame.render_widget(
             Paragraph::new(t.title.clone().bold().fg(theme.fg())).alignment(Alignment::Center),
@@ -125,12 +135,18 @@ pub fn render(frame: &mut Frame, app: &App) {
         frame.render_widget(gauge, progress);
     }
 
-    let vol_ratio = (app.player_status.volume / 100.0).clamp(0.0, 1.0);
-    let vol_gauge = Gauge::default()
-        .gauge_style(Style::new().fg(theme.dim()))
-        .ratio(vol_ratio)
-        .label(format!("vol {:.0}%", app.player_status.volume));
-    frame.render_widget(vol_gauge, volume);
+    let vol_val = app.player_status.volume.round() as usize;
+    let width = 20;
+    let filled = (vol_val * width) / 100;
+    let bar: String = (0..width)
+        .map(|i| if i < filled { '▓' } else { '░' })
+        .collect();
+
+    let vol_text = vec![
+        Line::from(format!("Volume: {}%", vol_val)).alignment(Alignment::Center),
+        Line::from(format!("│{}│", bar)).alignment(Alignment::Center),
+    ];
+    frame.render_widget(Paragraph::new(vol_text).fg(theme.dim()), volume);
 
     if let Some(np) = &app.now_playing {
         let n = &np.data.next_track;
