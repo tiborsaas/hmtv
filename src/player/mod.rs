@@ -120,6 +120,9 @@ fn run_player(
         connected: true,
         ..Default::default()
     };
+    // Deferred resume position applied on the next `file-loaded` event,
+    // adjusted by time spent loading/buffering after `loadfile`.
+    let mut pending_seek: Option<(f64, Instant)> = None;
     let _ = status_tx.send(status.clone());
 
     loop {
@@ -137,6 +140,14 @@ fn run_player(
                                 .unwrap_or("stream failed");
                             status.error = Some(format!("MPV Error: {err_msg}"));
                         } else if val["event"] == "file-loaded" {
+                            if let Some((base_secs, started_at)) = pending_seek.take() {
+                                let target_secs = base_secs + started_at.elapsed().as_secs_f64();
+                                if target_secs > 1.0 {
+                                    let _ = mpv.seek(target_secs, SeekOptions::Absolute);
+                                }
+                            }
+                            let _ = mpv.set_property("pause", false);
+                            status.paused = false;
                             status.error = None;
                         }
                     }
@@ -156,13 +167,7 @@ fn run_player(
                     } else {
                         status.error = None;
                         status.loaded_ytid = Some(ytid);
-                        if resume_secs > 1.0 {
-                            // Give mpv a moment to start decoding before seeking.
-                            std::thread::sleep(Duration::from_millis(500));
-                            let _ = mpv.seek(resume_secs, SeekOptions::Absolute);
-                        }
-                        let _ = mpv.set_property("pause", false);
-                        status.paused = false;
+                        pending_seek = Some((resume_secs, Instant::now()));
                     }
                 }
                 PlayerCommand::TogglePause => {
