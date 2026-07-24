@@ -23,6 +23,7 @@ pub fn handle_event(event: Event) -> Option<Action> {
                 KeyCode::Char('-') | KeyCode::Char('_') => Some(Action::VolumeDown),
                 KeyCode::Char('r') => Some(Action::Resync),
                 KeyCode::Char('t') => Some(Action::CycleTheme),
+                KeyCode::Char('o') => Some(Action::OpenVideo),
                 _ => None,
             }
         }
