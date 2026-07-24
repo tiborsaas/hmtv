@@ -11,6 +11,7 @@ pub enum Action {
     VolumeDown,
     Resync,
     CycleTheme,
+    OpenVideo,
     TracksUpdated(Box<NowPlayingUpdate>),
     PlayerStatusChanged(PlayerStatus),
     Error(String),
