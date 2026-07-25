@@ -2,7 +2,7 @@ use ratatui::Frame;
 use ratatui::layout::{Constraint, Layout, Rect};
 use ratatui::style::{Style, Stylize};
 use ratatui::text::Line;
-use ratatui::widgets::{Block, Borders, Gauge, Paragraph};
+use ratatui::widgets::{Block, Borders, Cell, Gauge, Paragraph, Row, Table};
 
 use crate::app::App;
 use crate::ui::ascii::format_mmss;
@@ -162,21 +162,38 @@ fn render_history_panel(frame: &mut Frame, app: &App, area: Rect) {
     };
     frame.render_widget(block, area);
 
-    let mut items = Vec::new();
-    for t in &app.history {
-        items.push(Line::from(vec![
-            format!("{:<20} ", t.artist).fg(theme.accent()),
-            " — ".fg(theme.dim()),
-            t.title.clone().fg(theme.fg()),
-        ]));
-    }
-
-    if items.is_empty() {
+    if app.history.is_empty() {
         frame.render_widget(
             Paragraph::new("Waiting for tracks...".fg(theme.dim())),
             inner,
         );
     } else {
-        frame.render_widget(Paragraph::new(items), inner);
+        let header = Row::new(vec!["#", "ARTIST", "TITLE", "YEAR", "LEN"])
+            .style(Style::new().fg(theme.accent()).bold());
+
+        let rows = app.history.iter().enumerate().map(|(idx, t)| {
+            Row::new(vec![
+                Cell::from((idx + 1).to_string()).style(Style::new().fg(theme.dim())),
+                Cell::from(t.artist.clone()).style(Style::new().fg(theme.accent())),
+                Cell::from(t.title.clone()).style(Style::new().fg(theme.fg())),
+                Cell::from(t.year.to_string()).style(Style::new().fg(theme.dim())),
+                Cell::from(format_mmss(t.duration as f64)).style(Style::new().fg(theme.dim())),
+            ])
+        });
+
+        let table = Table::new(
+            rows,
+            [
+                Constraint::Length(3),
+                Constraint::Percentage(30),
+                Constraint::Percentage(46),
+                Constraint::Length(6),
+                Constraint::Length(6),
+            ],
+        )
+        .header(header)
+        .column_spacing(1);
+
+        frame.render_widget(table, inner);
     }
 }
